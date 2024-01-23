@@ -23,10 +23,14 @@ LABEL com.github.containers.toolbox="true" \
 COPY --from=build /tmp/bin/* /usr/bin/
 COPY --from=build /tmp/_atuin /usr/share/zsh/site-functions/
 
-COPY ./toolboxes/fedora-toolbox/packages.fedora /toolbox-packages
+COPY extra-packages /
 
 RUN dnf -y upgrade && \
     dnf -y install $(<toolbox-packages) && \
     dnf clean all
 
-RUN rm /toolbox-packages
+RUN rm /extra-packages
+
+RUN   ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/flatpak && \ 
+      ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/podman && \
+      ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/rpm-ostree

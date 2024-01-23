@@ -1,18 +1,19 @@
-name: Build and Push Fedora Toolbox Image
+name: build-tourmaline-toolbox
 on:
-  schedule:
-    - cron: '20 22 * * *'  # 10:20pm everyday
   pull_request:
-  merge_group:
-  workflow_dispatch:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * TUE'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/README.md'
 env:
-    IMAGE_NAME: fedora-toolbox
+    IMAGE_NAME: tourmaline-toolbox
     IMAGE_TAGS: latest
     IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
-  cancel-in-progress: true
 
 jobs:
   push-ghcr:
@@ -24,16 +25,11 @@ jobs:
       id-token: write
     strategy:
       fail-fast: false
-    steps:
+    steps: 
       # Checkout push-to-registry action GitHub repository
       - name: Checkout Push to Registry action
         uses: actions/checkout@v4
-
-      - name: Verify Fedora distrobox
-        uses: EyeCantCU/cosign-action/verify@v0.2.2
-        with:
-          containers: fedora-distrobox:latest
-
+        
       # Build metadata
       - name: Image Metadata
         uses: docker/metadata-action@v5
@@ -42,7 +38,7 @@ jobs:
           images: |
             ${{ env.IMAGE_NAME }}
           labels: |
-            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/boxkit/main/README.md
+            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/kemra102/tourmaline-toolbox/main/README.md
 
       # Build image using Buildah action
       - name: Build Image
@@ -50,12 +46,12 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           containerfiles: |
-            ./toolboxes/fedora-toolbox/Containerfile.fedora
+            ./Containerfile
           image: ${{ env.IMAGE_NAME }}
           tags: ${{ env.IMAGE_TAGS }}
           labels: ${{ steps.meta.outputs.labels }}
           oci: false
-
+          
       # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
       # https://github.com/macbre/push-to-ghcr/issues/12
       - name: Lowercase Registry
@@ -67,7 +63,6 @@ jobs:
       # Push the image to GHCR (Image Registry)
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@v2
-        if: github.event_name != 'pull_request'
         id: push
         env:
           REGISTRY_USER: ${{ github.actor }}
@@ -78,24 +73,23 @@ jobs:
           registry: ${{ steps.registry_case.outputs.lowercase }}
           username: ${{ env.REGISTRY_USER }}
           password: ${{ env.REGISTRY_PASSWORD }}
+          extra-args: |
+            --disable-content-trust
+            
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
-        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
+            
       # Sign container
       - uses: sigstore/cosign-installer@v3.3.0
-        if: github.event_name != 'pull_request'
 
       - name: Sign container image
         if: github.event_name != 'pull_request'
         run: |
-          echo "${{ env.COSIGN_PRIVATE_KEY }}" > cosign.key
-          wc -c cosign.key
-          cosign sign -y --key cosign.key ${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}@${TAGS}
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}@${TAGS}
         env:
           TAGS: ${{ steps.push.outputs.digest }}
           COSIGN_EXPERIMENTAL: false

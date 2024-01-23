@@ -26,11 +26,11 @@ COPY --from=build /tmp/_atuin /usr/share/zsh/site-functions/
 COPY extra-packages /
 
 RUN dnf -y upgrade && \
-    dnf -y install $(<toolbox-packages) && \
+    dnf -y install $(</extra-packages) && \
     dnf clean all
 
 RUN rm /extra-packages
 
-RUN   ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/flatpak && \ 
-      ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/podman && \
-      ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/rpm-ostree
+RUN ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/flatpak && \ 
+    ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/podman && \
+    ln -fs /usr/bin/distrobox-host-exec /usr/local/bin/rpm-ostree

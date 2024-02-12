@@ -1,6 +1,6 @@
 FROM quay.io/fedora/fedora:latest as build
 
-ARG ATUIN_VERSION='17.2.0'
+ARG ATUIN_VERSION='18.0.1'
 ARG ATUIN_FILE_NAME="atuin-v${ATUIN_VERSION}-x86_64-unknown-linux-gnu"
 
 RUN mkdir -p /tmp/bin
